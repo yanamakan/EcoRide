@@ -1,0 +1,56 @@
+<%- include('_header', { page: 'home' }) %>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-sub">Live overview of the EcoRide database</p>
+    </div>
+    <!-- <div class="status-pill">● Connected</div> -->
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card" style="--accent:#00e5a0">
+        <div class="stat-value"><%= stats.customers ?? '—' %></div>
+        <div class="stat-label">Customers</div>
+        <a href="/customers" class="stat-link">Manage →</a>
+    </div>
+    <div class="stat-card" style="--accent:#4f9eff">
+        <div class="stat-value"><%= stats.rides ?? '—' %></div>
+        <div class="stat-label">Rides</div>
+        <a href="/reports" class="stat-link">View →</a>
+    </div>
+    <div class="stat-card" style="--accent:#ff6b6b">
+        <div class="stat-value"><%= stats.vehicles ?? '—' %></div>
+        <div class="stat-label">Vehicles</div>
+        <a href="/vehicles" class="stat-link">View →</a>
+    </div>
+    <div class="stat-card" style="--accent:#f5c542">
+        <div class="stat-value"><%= stats.tickets ?? '—' %></div>
+        <div class="stat-label">Support Tickets</div>
+        <a href="/tickets" class="stat-link">View →</a>
+    </div>
+</div>
+
+<div class="cards-row">
+    <div class="info-card">
+        <h3>System Info</h3>
+        <table class="mini-table">
+            <tr><td>Engine</td><td>Microsoft SQL Server</td></tr>
+            <tr><td>Database</td><td>ECORIDEDB</td></tr>
+            <tr><td>Interface</td><td>SSMS + Node.js</td></tr>
+            <tr><td>Module</td><td>IFS02B1</td></tr>
+        </table>
+    </div>
+    <div class="info-card">
+        <h3>Quick Actions</h3>
+        <div class="quick-actions">
+            <a href="/customers" class="qa-btn">+ Add Customer</a>
+            <a href="/vehicles"  class="qa-btn">View Vehicles</a>
+            <a href="/tickets"   class="qa-btn">Support Tickets</a>
+            <a href="/reports"   class="qa-btn">Business Reports</a>
+            <a href="/query"     class="qa-btn">Run SQL Query</a>
+        </div>
+    </div>
+</div>
+
+<%- include('_footer') %>

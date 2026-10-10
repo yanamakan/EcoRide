@@ -1,0 +1,85 @@
+<%- include('_header', { page: 'customers' }) %>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Customers</h1>
+        <p class="page-sub"><%= data.length %> records in database</p>
+    </div>
+    <button class="btn-primary" onclick="toggleModal('addModal')">+ Add New</button>
+</div>
+
+<form method="GET" action="/customers" class="search-bar">
+    <input type="text" name="search" placeholder="Search by name or email…" value="<%= search %>" class="search-input">
+    <button type="submit" class="btn-primary">Search</button>
+    <% if (search) { %><a href="/customers" class="btn-ghost">Clear</a><% } %>
+</form>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Customer ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (data.length === 0) { %>
+            <tr><td colspan="5" class="empty-row">No customers found.</td></tr>
+        <% } else { %>
+            <% data.forEach(c => { %>
+            <tr>
+                <td class="mono"><%= c.CUSTOMERID %></td>
+                <td><strong><%= c.CUSTOMERNAME %></strong></td>
+                <td class="mono"><%= c.CUSTOMEREMAIL %></td>
+                <td class="mono"><%= c.CUSTOMERPHONE || '—' %></td>
+                <td>
+                    <form method="POST" action="/customers/delete/<%= c.CUSTOMERID %>"
+                          onsubmit="return confirm('Delete this customer?')">
+                        <button type="submit" class="btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            <% }) %>
+        <% } %>
+        </tbody>
+    </table>
+</div>
+
+<div id="addModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add Customer</h3>
+            <button onclick="toggleModal('addModal')" class="modal-close">✕</button>
+        </div>
+        <form method="POST" action="/customers/add" class="modal-form">
+            <label>Customer ID
+                <input type="text" name="customerid" required placeholder="e.g. C001">
+            </label>
+            <label>Full Name
+                <input type="text" name="customername" required placeholder="Full name">
+            </label>
+            <label>Email
+                <input type="email" name="customeremail" required placeholder="email@example.com">
+            </label>
+            <label>Phone
+                <input type="text" name="customerphone" placeholder="0821234567">
+            </label>
+            <div class="modal-actions">
+                <button type="button" onclick="toggleModal('addModal')" class="btn-ghost">Cancel</button>
+                <button type="submit" class="btn-primary">Save Customer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleModal(id) {
+    const m = document.getElementById(id);
+    m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+}
+</script>
+
+<%- include('_footer') %>

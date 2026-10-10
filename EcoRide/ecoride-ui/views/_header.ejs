@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoRide DMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <% if (typeof page !=='undefined' && page==='insights' ) { %>
+        <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+        <% } %>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-mark">ER</div>
+            <div class="logo-text">
+                <span class="logo-title">EcoRide</span>
+                <span class="logo-sub">Database System</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="/present" class="nav-item"><span class="nav-icon">▶</span> Presentation</a>
+            <a href="/" class="nav-item <%= page==='home'      ? 'active' : '' %>">
+                <span class="nav-icon">◈</span> Overview
+            </a>
+            <a href="/customers" class="nav-item <%= page==='customers' ? 'active' : '' %>">
+                <span class="nav-icon">◉</span> Customers
+            </a>
+            <a href="/vehicles" class="nav-item <%= page==='vehicles'  ? 'active' : '' %>">
+                <span class="nav-icon">◐</span> Vehicles
+            </a>
+            <a href="/tickets" class="nav-item <%= page==='tickets'   ? 'active' : '' %>">
+                <span class="nav-icon">◧</span> Support Tickets
+            </a>
+            <a href="/reports" class="nav-item <%= page==='reports'   ? 'active' : '' %>">
+                <span class="nav-icon">◫</span> Reports
+            </a>
+            <a href="/insights" class="nav-item <%= page==='insights'  ? 'active' : '' %>">
+                <span class="nav-icon">◆</span> BI Dashboard
+            </a>
+            <a href="/query" class="nav-item <%= page==='query'     ? 'active' : '' %>">
+                <span class="nav-icon">◌</span> SQL Runner
+            </a>
+        </nav>
+
+        <div class="sidebar-tables">
+            <p class="tables-label">Live Tables</p>
+            <div id="table-list" class="table-list">Loading…</div>
+        </div>
+
+        <div class="sidebar-footer">IFS02B1 · SABYONI</div>
+    </aside>
+
+    <main class="main-content">

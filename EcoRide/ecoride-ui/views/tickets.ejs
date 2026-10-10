@@ -1,0 +1,49 @@
+<%- include('_header', { page: 'tickets' }) %>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Support Tickets</h1>
+        <p class="page-sub"><%= data.length %> tickets in system</p>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Ticket ID</th>
+                <th>Customer</th>
+                <th>Issue Type</th>
+                <th>Description</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (data.length === 0) { %>
+            <tr><td colspan="7" class="empty-row">No tickets found.</td></tr>
+        <% } else { %>
+            <% data.forEach(t => { %>
+            <tr>
+                <td class="mono">#<%= t.TICKETID %></td>
+                <td><strong><%= t.CUSTOMERNAME || '—' %></strong></td>
+                <td><span class="badge"><%= t.IssueName || '—' %></span></td>
+                <td><%= t.DESCRIPTION %></td>
+                <td class="mono"><%= t.AssignedEmployee || 'Unassigned' %></td>
+                <td>
+                    <span class="badge" style="<%=
+                        t.STATUS === 'Resolved'   ? 'background:rgba(0,229,160,.12);color:#00e5a0;border-color:rgba(0,229,160,.2)' :
+                        t.STATUS === 'Open'       ? 'background:rgba(255,107,107,.12);color:#ff6b6b;border-color:rgba(255,107,107,.2)' :
+                                                    'background:rgba(245,197,66,.12);color:#f5c542;border-color:rgba(245,197,66,.2)'
+                    %>"><%= t.STATUS %></span>
+                </td>
+                <td class="mono"><%= t.CREATEDAT ? new Date(t.CREATEDAT).toLocaleDateString('en-ZA') : '—' %></td>
+            </tr>
+            <% }) %>
+        <% } %>
+        </tbody>
+    </table>
+</div>
+
+<%- include('_footer') %>

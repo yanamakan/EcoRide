@@ -1,0 +1,59 @@
+<%- include('_header', { page: 'query' }) %>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">SQL Runner</h1>
+        <p class="page-sub">Execute SELECT queries directly against SQL Server</p>
+    </div>
+    <span class="status-pill" style="background:rgba(255,107,107,.15);color:#ff6b6b">DDL Blocked</span>
+</div>
+
+<div class="section-card">
+    <form method="POST" action="/query">
+        <label class="query-label">SQL Query</label>
+        <textarea name="queryText" class="query-editor" rows="8" spellcheck="false" placeholder="SELECT * FROM Stakeholders WHERE Role = 'Manager'"><%= queryText %></textarea>
+        <div class="query-actions">
+            <!-- <div class="query-hint">Only SELECT statements. DROP, ALTER, TRUNCATE are blocked.</div> -->
+            <button type="submit" class="btn-primary">▶ Run Query</button>
+        </div>
+    </form>
+</div>
+
+<% if (error) { %>
+<div class="error-box">
+    <strong>SQL Error</strong>
+    <p class="mono"><%= error %></p>
+</div>
+<% } %>
+
+<% if (results !== null) { %>
+<div class="section-card">
+    <h3 class="section-title">Results <span class="query-tag"><%= results.length %> rows</span></h3>
+    <% if (results.length === 0) { %>
+        <p class="empty-msg">Query returned no rows.</p>
+    <% } else { %>
+        <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                <% Object.keys(results[0]).forEach(col => { %>
+                    <th><%= col %></th>
+                <% }) %>
+                </tr>
+            </thead>
+            <tbody>
+            <% results.forEach(row => { %>
+                <tr>
+                <% Object.values(row).forEach(val => { %>
+                    <td class="mono"><%= val !== null ? val : '<null>' %></td>
+                <% }) %>
+                </tr>
+            <% }) %>
+            </tbody>
+        </table>
+        </div>
+    <% } %>
+</div>
+<% } %>
+
+<%- include('_footer') %>

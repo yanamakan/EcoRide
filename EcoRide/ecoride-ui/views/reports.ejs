@@ -1,0 +1,71 @@
+<%- include('_header', { page: 'reports' }) %>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Business Reports</h1>
+        <p class="page-sub">Complex SQL queries with JOINs, GROUP BY, and HAVING</p>
+    </div>
+</div>
+
+<!-- Revenue by Vehicle Type -->
+<div class="section-card">
+    <h3 class="section-title">Revenue by Vehicle Type <span class="query-tag">JOIN · GROUP BY · HAVING</span></h3>
+    <% if (salesByDept.length === 0) { %>
+        <p class="empty-msg">No data — add ride records to see this report.</p>
+    <% } else { %>
+        <% var maxRev = Math.max.apply(null, salesByDept.map(function(r){ return r.Revenue || 0; })); %>
+        <div class="bar-chart">
+        <% salesByDept.forEach(function(row) { %>
+            <div class="bar-row">
+                <span class="bar-label"><%= row.DepartmentName %></span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width:<%= maxRev > 0 ? Math.round((row.Revenue/maxRev)*100) : 0 %>%"></div>
+                </div>
+                <span class="bar-val">R<%= (row.Revenue||0).toLocaleString() %> · <%= row.TotalSales %> rides</span>
+            </div>
+        <% }); %>
+        </div>
+
+        <table class="data-table mt-20">
+            <thead>
+                <tr><th>Vehicle Type</th><th>Total Rides</th><th>Revenue (R)</th></tr>
+            </thead>
+            <tbody>
+            <% salesByDept.forEach(function(row) { %>
+                <tr>
+                    <td><%= row.DepartmentName %></td>
+                    <td class="mono"><%= row.TotalSales %></td>
+                    <td class="mono">R<%= (row.Revenue||0).toLocaleString() %></td>
+                </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    <% } %>
+</div>
+
+<!-- Recent Rides -->
+<div class="section-card">
+    <h3 class="section-title">Recent Rides <span class="query-tag">3-table JOIN · TOP 10</span></h3>
+    <% if (recentTx.length === 0) { %>
+        <p class="empty-msg">No ride data found.</p>
+    <% } else { %>
+        <table class="data-table">
+            <thead>
+                <tr><th>Ride ID</th><th>Customer</th><th>Vehicle</th><th>Fare</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+            <% recentTx.forEach(function(t) { %>
+                <tr>
+                    <td class="mono">#<%= t.TransactionID %></td>
+                    <td><strong><%= t.Stakeholder %></strong></td>
+                    <td><span class="badge"><%= t.DepartmentName %></span></td>
+                    <td class="mono">R<%= (t.Amount||0).toLocaleString() %></td>
+                    <td class="mono"><%= t.TransactionDate ? new Date(t.TransactionDate).toLocaleDateString('en-ZA') : '—' %></td>
+                </tr>
+            <% }); %>
+            </tbody>
+        </table>
+    <% } %>
+</div>
+
+<%- include('_footer') %>

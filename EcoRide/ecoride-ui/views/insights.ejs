@@ -1,0 +1,250 @@
+<%- include('_header', { page: 'insights' }) %>
+
+<div class="pres-strip"><a href="/present#c5">◀ Section C</a><span>Section D · BI Dashboard</span><a href="/present#a1">Restart ↺</a></div>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">BI Dashboard</h1>
+        <!-- <p class="page-sub">Data Warehouse (ECORIDE_DW) &middot; Star Schema Analytic</p> -->
+    </div>
+</div>
+
+<!-- Filters -->
+<form method="GET" action="/insights" class="search-bar filter-bar">
+    <select name="month" class="search-input">
+        <option value="">All Months</option>
+        <% filterOptions.months.forEach(function(m) { %>
+            <option value="<%= m.MONTH %>" <%= String(selected.month) === String(m.MONTH) ? 'selected' : '' %>><%= m.MONTHNAME %></option>
+        <% }); %>
+    </select>
+    <select name="location" class="search-input">
+        <option value="">All Locations</option>
+        <% filterOptions.locations.forEach(function(l) { %>
+            <option value="<%= l.NAME %>" <%= selected.location === l.NAME ? 'selected' : '' %>><%= l.NAME %></option>
+        <% }); %>
+    </select>
+    <select name="vehicletype" class="search-input">
+        <option value="">All Vehicle Types</option>
+        <% filterOptions.vehicleTypes.forEach(function(v) { %>
+            <option value="<%= v.TYPENAME %>" <%= selected.vehicletype === v.TYPENAME ? 'selected' : '' %>><%= v.TYPENAME %></option>
+        <% }); %>
+    </select>
+    <select name="paymentmethod" class="search-input">
+        <option value="">All Payment Methods</option>
+        <% filterOptions.paymentMethods.forEach(function(p) { %>
+            <option value="<%= p.METHODTYPE %>" <%= selected.paymentmethod === p.METHODTYPE ? 'selected' : '' %>><%= p.METHODTYPE %></option>
+        <% }); %>
+    </select>
+    <button type="submit" class="btn-primary">Apply</button>
+    <a href="/insights" class="btn-ghost">Clear</a>
+</form>
+
+<!-- KPI cards -->
+<div class="stats-grid kpi-grid">
+    <div class="stat-card" style="--accent:#00e5a0">
+        <div class="stat-value">R<%= Math.round(kpi.totalRevenue).toLocaleString() %></div>
+        <div class="stat-label">Total Revenue</div>
+    </div>
+    <div class="stat-card" style="--accent:#4f9eff">
+        <div class="stat-value"><%= kpi.totalRides.toLocaleString() %></div>
+        <div class="stat-label">Total Rides</div>
+    </div>
+    <div class="stat-card" style="--accent:#f5c542">
+        <div class="stat-value">R<%= kpi.avgFare.toFixed(2) %></div>
+        <div class="stat-label">Avg Fare per Ride</div>
+    </div>
+</div>
+
+<div class="cards-row">
+    <!-- Revenue by Month -->
+    <div class="section-card">
+        <h3 class="section-title">Revenue by Month</h3>
+        <% if (revenueByMonth.length === 0) { %>
+            <p class="empty-msg">No data for the selected filters.</p>
+        <% } else { %>
+            <% var maxMonthRev = Math.max.apply(null, revenueByMonth.map(function(r){ return r.Revenue || 0; })); %>
+            <div class="bar-chart">
+            <% revenueByMonth.forEach(function(row) { %>
+                <div class="bar-row">
+                    <span class="bar-label"><%= row.MONTHNAME %></span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:<%= maxMonthRev > 0 ? Math.round((row.Revenue/maxMonthRev)*100) : 0 %>%"></div>
+                    </div>
+                    <span class="bar-val">R<%= Math.round(row.Revenue||0).toLocaleString() %></span>
+                </div>
+            <% }); %>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Revenue by Payment Method -->
+    <div class="section-card">
+        <h3 class="section-title">Revenue by Payment Method</h3>
+        <% if (revenueByPayment.length === 0) { %>
+            <p class="empty-msg">No data for the selected filters.</p>
+        <% } else { %>
+            <% var maxPayRev = Math.max.apply(null, revenueByPayment.map(function(r){ return r.Revenue || 0; })); %>
+            <div class="bar-chart">
+            <% revenueByPayment.forEach(function(row) { %>
+                <div class="bar-row">
+                    <span class="bar-label"><%= row.METHODTYPE %></span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:<%= maxPayRev > 0 ? Math.round((row.Revenue/maxPayRev)*100) : 0 %>%"></div>
+                    </div>
+                    <span class="bar-val">R<%= Math.round(row.Revenue||0).toLocaleString() %></span>
+                </div>
+            <% }); %>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<div class="cards-row">
+    <!-- Top 10 Routes by Revenue -->
+    <div class="section-card">
+        <h3 class="section-title">Top 10 Routes by Revenue</h3>
+        <% if (topRoutes.length === 0) { %>
+            <p class="empty-msg">No data for the selected filters.</p>
+        <% } else { %>
+            <% var maxRouteRev = Math.max.apply(null, topRoutes.map(function(r){ return r.Revenue || 0; })); %>
+            <div class="bar-chart routes-chart">
+            <% topRoutes.forEach(function(row) { %>
+                <div class="bar-row">
+                    <span class="bar-label">#<%= row.ROUTEID %> <%= row.STARTLOCATION %> &rarr; <%= row.ENDLOCATION %></span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:<%= maxRouteRev > 0 ? Math.round((row.Revenue/maxRouteRev)*100) : 0 %>%"></div>
+                    </div>
+                    <span class="bar-val">R<%= Math.round(row.Revenue||0).toLocaleString() %></span>
+                </div>
+            <% }); %>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Top 10 Vehicle Types by Rides -->
+    <div class="section-card">
+        <h3 class="section-title">Top 10 Vehicle Types by Rides</h3>
+        <% if (topVehicleTypes.length === 0) { %>
+            <p class="empty-msg">No data for the selected filters.</p>
+        <% } else { %>
+            <% var maxVehRides = Math.max.apply(null, topVehicleTypes.map(function(r){ return r.Rides || 0; })); %>
+            <div class="bar-chart">
+            <% topVehicleTypes.forEach(function(row) { %>
+                <div class="bar-row">
+                    <span class="bar-label"><%= row.TYPENAME %></span>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width:<%= maxVehRides > 0 ? Math.round((row.Rides/maxVehRides)*100) : 0 %>%"></div>
+                    </div>
+                    <span class="bar-val"><%= row.Rides %> rides</span>
+                </div>
+            <% }); %>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Top 10 Locations by Revenue -->
+<div class="section-card">
+    <h3 class="section-title">Top 10 Locations by Revenue</h3>
+    <% if (topLocations.length === 0) { %>
+        <p class="empty-msg">No data for the selected filters.</p>
+    <% } else { %>
+        <% var maxLocRev = Math.max.apply(null, topLocations.map(function(r){ return r.Revenue || 0; })); %>
+        <div class="bar-chart">
+        <% topLocations.forEach(function(row) { %>
+            <div class="bar-row">
+                <span class="bar-label"><%= row.NAME %></span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width:<%= maxLocRev > 0 ? Math.round((row.Revenue/maxLocRev)*100) : 0 %>%"></div>
+                </div>
+                <span class="bar-val">R<%= Math.round(row.Revenue||0).toLocaleString() %> &middot; <%= row.Rides %> rides</span>
+            </div>
+        <% }); %>
+        </div>
+    <% } %>
+</div>
+
+<!-- Interactive Fleet Map -->
+<div class="section-card">
+    <h3 class="section-title">Fleet Map <span class="query-tag">Live from ECORIDE_DW</span></h3>
+    <p class="page-sub map-note">Marker size = revenue at that hub. Click a marker for details, or to filter the whole dashboard to that location.</p>
+    <div id="hub-map"></div>
+    <p class="map-caveat">Hub coordinates are approximate landmark locations, not GPS-tracked vehicle positions.</p>
+</div>
+
+<!-- What-If Simulator -->
+<div class="section-card">
+    <h3 class="section-title">What-If Simulator <span class="query-tag">Decision Support</span></h3>
+    <p class="page-sub map-note">Projections only &mdash; based on your current filtered totals, not a statistical forecast.</p>
+
+    <div class="whatif-grid">
+        <!-- Fare adjustment -->
+        <div class="whatif-panel">
+            <h4>Fare Adjustment</h4>
+            <label for="fareSlider" class="whatif-label">
+                Change average fare by <span id="fareSliderVal">0</span>%
+            </label>
+            <input type="range" id="fareSlider" min="-20" max="40" value="0" step="1">
+            <div class="whatif-result">
+                <div><span class="whatif-tag">Current Revenue</span><span id="fareBase">R0</span></div>
+                <div><span class="whatif-tag">Projected Revenue</span><span id="fareProjected">R0</span></div>
+                <div><span class="whatif-tag">Change</span><span id="fareDelta">R0</span></div>
+            </div>
+            <p class="whatif-note">Assumes ride volume stays constant &mdash; a real fare change would likely affect demand too.</p>
+        </div>
+
+        <!-- Fleet reallocation -->
+        <div class="whatif-panel">
+            <h4>Fleet Reallocation</h4>
+            <div class="whatif-row">
+                <div>
+                    <label class="whatif-label">Move vehicles from</label>
+                    <select id="fromLocation" class="search-input"></select>
+                </div>
+                <div>
+                    <label class="whatif-label">to</label>
+                    <select id="toLocation" class="search-input"></select>
+                </div>
+            </div>
+            <label for="fleetSlider" class="whatif-label">
+                Vehicles to move: <span id="fleetSliderVal">1</span>
+            </label>
+            <input type="range" id="fleetSlider" min="1" max="10" value="1" step="1">
+            <div class="whatif-result">
+                <div><span class="whatif-tag">From hub rev/vehicle</span><span id="fromRPV">R0</span></div>
+                <div><span class="whatif-tag">To hub rev/vehicle</span><span id="toRPV">R0</span></div>
+                <div><span class="whatif-tag">Net projected change</span><span id="fleetDelta">R0</span></div>
+            </div>
+            <p class="whatif-note">Assumes moved vehicles earn the destination hub's current average &mdash; a simplification, not a guarantee.</p>
+        </div>
+    </div>
+</div>
+
+<!-- AI Chat Assistant -->
+<button id="chatToggle" class="chat-toggle" aria-label="Open AI assistant">Ask a question</button>
+<div id="chatPanel" class="chat-panel hidden">
+    <div class="chat-header">
+        <span>EcoRide Assistant</span>
+        <span class="chat-header-actions">
+            <button id="chatReset" class="chat-reset" aria-label="Start a new chat" title="New chat">New chat</button>
+            <button id="chatClose" class="chat-close" aria-label="Close">&times;</button>
+        </span>
+    </div>
+    <div id="chatMessages" class="chat-messages">
+        <div class="chat-msg chat-msg-bot">
+            Ask me anything about EcoRide: revenue, rides, hubs, vehicles, routes, customers or payments. I can also explain how the dashboard and data warehouse work. Try "Which hub earned the most in March?" and then follow up with "and in February?"
+        </div>
+    </div>
+    <form id="chatForm" class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Ask a question..." autocomplete="off" maxlength="300">
+        <button type="submit" class="btn-primary">Send</button>
+    </form>
+</div>
+
+<script id="dashboard-data" type="application/json">
+    <%- JSON.stringify({ locationStats: locationStats, totalRevenue: kpi.totalRevenue }) %>
+</script>
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/js/insights.js"></script>
+<script src="/js/chat.js"></script>
+
+<%- include('_footer') %>

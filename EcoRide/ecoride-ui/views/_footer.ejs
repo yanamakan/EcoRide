@@ -1,0 +1,18 @@
+    </main>
+
+    <script>
+        // Load live table names into sidebar
+        fetch('/api/tables')
+            .then(r => r.json())
+            .then(tables => {
+                const el = document.getElementById('table-list');
+                el.innerHTML = tables.length
+                    ? tables.map(t => `<span class="table-tag">${t.TABLE_NAME}</span>`).join('')
+                    : '<span style="opacity:.4;font-size:.75rem">No tables found</span>';
+            })
+            .catch(() => {
+                document.getElementById('table-list').innerHTML = '<span style="opacity:.4;font-size:.75rem">Unavailable</span>';
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<%- include('_header', { page: 'vehicles' }) %>
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Vehicles</h1>
+        <p class="page-sub"><%= data.length %> vehicles in fleet</p>
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Model</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Battery</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Cost/min</th>
+            </tr>
+        </thead>
+        <tbody>
+        <% if (data.length === 0) { %>
+            <tr><td colspan="8" class="empty-row">No vehicles found.</td></tr>
+        <% } else { %>
+            <% data.forEach(v => { %>
+            <tr>
+                <td class="mono"><%= v.VEHICLEID %></td>
+                <td><strong><%= v.MODEL %></strong></td>
+                <td><%= v.VEHICLETYPE %></td>
+                <td><span class="badge"><%= v.TYPENAME || '—' %></span></td>
+                <td class="mono">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div style="width:60px;height:6px;background:#1a1e2a;border-radius:3px;overflow:hidden">
+                            <div style="width:<%= v.BATTERYLEVEL %>%;height:100%;background:<%= v.BATTERYLEVEL > 50 ? '#00e5a0' : v.BATTERYLEVEL > 20 ? '#f5c542' : '#ff6b6b' %>;border-radius:3px"></div>
+                        </div>
+                        <%= v.BATTERYLEVEL %>%
+                    </div>
+                </td>
+                <td><%= v.CURRENTLOCATION %></td>
+                <td>
+                    <span class="badge" style="<%= v.STATUS === 'Available' ? 'background:rgba(0,229,160,.12);color:#00e5a0;border-color:rgba(0,229,160,.2)' : 'background:rgba(255,107,107,.12);color:#ff6b6b;border-color:rgba(255,107,107,.2)' %>">
+                        <%= v.STATUS %>
+                    </span>
+                </td>
+                <td class="mono">R<%= (v.COSTPERMIN || 0).toLocaleString() %></td>
+            </tr>
+            <% }) %>
+        <% } %>
+        </tbody>
+    </table>
+</div>
+
+<%- include('_footer') %>

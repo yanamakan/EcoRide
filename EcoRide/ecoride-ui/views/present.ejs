@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoRide · Group Project Presentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/present.css"></head>
+<body>
+<div class="bg"></div>
+<header class="bar">
+  <div class="brand"><div class="logo">ER</div>EcoRide · IFS02B1</div>
+  <nav id="tabs"></nav>
+  <div class="ctrl"><button id="prev" title="Previous (←)">←</button><span id="count"></span><button id="next" title="Next (→)">→</button></div>
+  <div id="prog"></div>
+</header>
+<main id="stage"></main>
+<div class="hint">← → navigate · 1 2 3 4 jump to section · F fullscreen</div>
+<script>
+const OLAP = <%- olapJson %>;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const rv = (i, html, tag = 'div', cls = '') => `<${tag} class="rv ${cls}" style="--i:${i}">${html}</${tag}>`;
+const COLORS = ['#00e5a0', '#4f9eff', '#f5c542', '#ff6b6b', '#b57bff', '#ff9f43'];
+
+/* ───────── CONTENT ───────── */
+const TX = [
+  ['Ride Booking / Completion', 'A customer books and completes a ride on a vehicle, with ride details and GPS information.'],
+  ['Payment Processing', 'Payments made for rides, including amount and payment status.'],
+  ['Vehicle Maintenance', 'Maintenance and repair activities per vehicle, with date and type of repair.'],
+  ['Customer Support', 'Support tickets for billing, safety or app issues, tracked through to resolution.'],
+  ['Corporate Client Transactions', 'Rides and services for corporate clients, supporting business reporting.']
+];
+const MQ = [
+  'How did total revenue change from January to December 2024, and which month was highest and lowest?',
+  'Which routes generated the most rides and revenue in 2024, and how did they change during the year?',
+  'Which vehicle types were used most, and how did usage and revenue differ across locations?',
+  'Which subscription types had the most customers and revenue, and how did uptake change monthly?',
+  'What were the most common support issues, and how did tickets differ across departments and months?'
+];
+const DIMS = [
+  { n: 'DIM_CUSTOMER', x: 12, y: 14, src: 'CUSTOMER', a: ['CUSTOMERKEY (PK)', 'CUSTOMERID', 'CUSTOMERNAME', 'CUSTOMERPHONE', 'CUSTOMEREMAIL'] },
+  { n: 'DIM_VEHICLE', x: 12, y: 50, src: 'VEHICLE + VEHICLE_TYPE', a: ['VEHICLEKEY (PK)', 'VEHICLEID', 'MODEL', 'STATUS', 'BATTERYLEVEL', 'TYPENAME', 'MAXSPEEDKMH', 'RANGEKM', 'COSTPERMIN'] },
+  { n: 'DIM_LOCATION', x: 12, y: 86, src: 'LOCATION', a: ['LOCATIONKEY (PK)', 'LOCATIONID', 'NAME', 'ADDRESS', 'CAPACITY'] },
+  { n: 'DIM_ROUTE', x: 88, y: 14, src: 'ROUTE', a: ['ROUTEKEY (PK)', 'ROUTEID', 'STARTLOCATION', 'ENDLOCATION', 'DISTANCEKM', 'DURATION'] },
+  { n: 'DIM_PAYMENT_METHOD', x: 88, y: 50, src: 'PAYMENT_METHOD', a: ['PAYMENTMETHODKEY (PK)', 'PAYMENTMETHODID', 'METHODTYPE', 'PROVIDER'] },
+  { n: 'DIM_DATE', x: 88, y: 86, src: 'RIDE.STARTTIME', a: ['DATEKEY (PK)', 'FULLDATE', 'DAY', 'MONTH', 'MONTHNAME', 'QUARTER', 'YEAR'] }
+];
+const FACT = { n: 'FACT_RIDE', src: 'RIDE (+ lookups to all dimensions)', a: ['RIDEKEY (PK)', 'RIDEID', '6 foreign keys', 'RIDECOUNT', 'FAREAMOUNT', 'RIDEDURATIONMINUTES'] };
+const CHARS = [
+  ['S', 'Subject-oriented', 'Built around ONE subject: ride transactions. Invoices, tickets, promotions and subscriptions stay in the operational database.'],
+  ['I', 'Integrated', 'Seven operational tables are combined into one consistent structure, e.g. VEHICLE + VEHICLE_TYPE become a single DIM_VEHICLE.'],
+  ['T', 'Time-variant', 'DIM_DATE breaks every ride into day, month, quarter and year, so trends across periods can be analysed.'],
+  ['N', 'Nonvolatile', 'Once loaded, data is never overwritten or deleted. New rides arrive as new rows through a fresh ETL run.']
+];
+const STEPS = [
+  ['Surrogate keys', 'ROW_NUMBER() generates new warehouse keys (CUSTOMERKEY, VEHICLEKEY …, RIDEKEY) that replace operational natural keys.'],
+  ['Date decomposition', 'RIDE.STARTTIME is split into FULLDATE, DAY, MONTH, MONTHNAME, QUARTER and YEAR in DIM_DATE.'],
+  ['Derived measure', 'RIDEDURATIONMINUTES = DATEDIFF(MINUTE, STARTTIME, ENDTIME). It does not exist in the operational database.'],
+  ['Denormalisation', 'VEHICLE is merged with VEHICLE_TYPE so every vehicle row carries its type name, speed, range and cost per minute.'],
+  ['Location lookup', 'Each ride gets its LOCATIONKEY through its route\'s LOCATIONID (ROUTE → LOCATION).'],
+  ['Payment lookup', 'Each ride gets its PAYMENTMETHODKEY from the customer\'s registered payment method (matched on CUSTOMERID), so every ride has a method.'],
+  ['Data cleaning', 'Only Completed rides with an end time are loaded; Active and Cancelled rides are filtered out.']
+];
+
+/* ───────── SLIDES ───────── */
+const S = [];
+S.push({ id: 'a1', sec: 'A', html: () => `
+  ${rv(0, 'Section A · Business Overview', 'div', 'eyebrow')}
+  ${rv(1, 'EcoRide <span class="grad">Mobility Solutions</span>', 'h1')}
+  ${rv(2, 'A smart-mobility company in the sustainable transport industry, renting electric bikes and scooters through a mobile app: locate, unlock, ride and pay.', 'p', 'sub')}
+  <div class="grid">
+    ${[['Services', 'Locate, unlock, rent and pay for e-bikes & scooters'], ['Technology', 'GPS tracking, payment systems and route planning'], ['Operations', 'Charging, maintenance, fleet redistribution, battery monitoring, support'], ['Impact', 'Ride and vehicle data used to cut emissions and support decisions']]
+      .map((c, i) => `<div class="rv card" style="--c:${COLORS[i]};--i:${i + 3}"><div class="n">0${i + 1}</div><h3>${c[0]}</h3><p>${c[1]}</p></div>`).join('')}
+  </div>
+  <div class="stats" id="live-stats"></div>` , after: async () => {
+    try { const d = await (await fetch('/api/rowcounts')).json(); const get = t => d.counts.find(c => c.t === t).n;
+      $('#live-stats').innerHTML = [['Customers in warehouse', get('DIM_CUSTOMER')], ['Vehicles', get('DIM_VEHICLE')], ['Locations', get('DIM_LOCATION')], ['Completed rides', get('FACT_RIDE')]]
+        .map((s, i) => `<div class="stat rv" style="--c:${COLORS[i]};--i:${i + 6}"><b data-n="${s[1]}">0</b><span>${s[0]}</span></div>`).join(''); countUp(); } catch (e) {} } });
+
+S.push({ id: 'a2', sec: 'A', html: () => `
+  ${rv(0, 'Section A · Operational Transactions', 'div', 'eyebrow')}${rv(1, 'Five transactions the database captures', 'h2')}
+  ${rv(2, 'From the Semester 1 ERD: the day-to-day events that run the business.', 'p', 'sub')}
+  <div class="grid">${TX.map((t, i) => `<div class="rv card" style="--c:${COLORS[i]};--i:${i + 3}"><div class="n">TRANSACTION ${i + 1}</div><h3>${t[0]}</h3><p>${t[1]}</p></div>`).join('')}</div>` });
+
+S.push({ id: 'a3', sec: 'A', html: () => `
+  ${rv(0, 'Section A · Management Questions', 'div', 'eyebrow')}${rv(1, 'Questions a single transaction can\'t answer', 'h2')}
+  ${rv(2, 'These need historical, aggregated, multidimensional analysis: the reason for a data warehouse.', 'p', 'sub')}
+  ${MQ.map((q, i) => `<div class="rv card q" style="--c:${COLORS[i]};--i:${i + 3}"><div class="n">${i + 1}</div><p style="color:var(--tx);font-size:14px">${q}</p></div>`).join('')}` });
+
+S.push({ id: 'b1', sec: 'B', html: () => `
+  ${rv(0, 'Section B · Data Warehouse Design', 'div', 'eyebrow')}${rv(1, 'Subject area: <span class="grad">Ride Transactions</span>', 'h1')}
+  ${rv(2, 'The RIDE table holds the core business transaction: start and end time, status, fare, customer, vehicle and route. It directly supports analysis of ride trends, demand by location, vehicle performance and revenue.', 'p', 'sub')}
+  <div class="grid">${[['Trends', 'Rides and revenue over time'], ['Demand', 'Which locations and routes are busiest'], ['Vehicles', 'Which vehicle types perform best'], ['Revenue', 'How customers pay and what they spend']]
+    .map((c, i) => `<div class="rv card" style="--c:${COLORS[i]};--i:${i + 3}"><h3>${c[0]}</h3><p>${c[1]}</p></div>`).join('')}</div>` });
+
+S.push({ id: 'b2', sec: 'B', html: () => `
+  ${rv(0, 'Section B · Star Schema', 'div', 'eyebrow')}${rv(1, 'One fact table, six dimensions', 'h2')}
+  ${rv(2, 'Click any table to see its attributes and where the data comes from.', 'p', 'sub')}
+  <div class="star">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none">${DIMS.map((d, i) => `<line id="ln${i}" x1="${d.x}" y1="${d.y}" x2="50" y2="50"/>`).join('')}</svg>
+    ${DIMS.map((d, i) => `<div class="node" data-i="${i}" style="left:${d.x}%;top:${d.y}%;--c:${COLORS[i]};--i:${i + 1}">${d.n}</div>`).join('')}
+    <div class="node fact on" data-i="f" style="left:50%;top:50%;--c:#ff6bb5;--i:0">FACT_RIDE</div>
+  </div>
+  <div class="panel" id="dpanel"></div>`, after: () => {
+    const show = k => { const d = k === 'f' ? FACT : DIMS[k];
+      document.querySelectorAll('.node').forEach(n => n.classList.toggle('on', n.dataset.i === String(k)));
+      document.querySelectorAll('.star line').forEach((l, i) => l.classList.toggle('hl', k === 'f' || i === +k));
+      $('#dpanel').innerHTML = `<b>${d.n}</b> ← from <b>${d.src}</b><br>${d.a.map(x => `<code>${x}</code>`).join('')}`; };
+    document.querySelectorAll('.node').forEach(n => n.onclick = () => show(n.dataset.i === 'f' ? 'f' : +n.dataset.i)); show('f'); } });
+
+S.push({ id: 'b3', sec: 'B', html: () => `
+  ${rv(0, 'Section B · Warehouse Characteristics', 'div', 'eyebrow')}${rv(1, 'Why this is a data warehouse', 'h2')}
+  ${rv(2, 'Click a card to flip it.', 'p', 'sub')}
+  <div class="grid">${CHARS.map((c, i) => `<div class="rv flip" style="--i:${i + 3}" onclick="this.classList.toggle('on')"><div>
+    <div class="f" style="--c:${COLORS[i]}"><div class="big">${c[0]}</div><h3>${c[1]}</h3></div><div class="k" style="--c:${COLORS[i]}">${c[2]}</div></div></div>`).join('')}</div>` });
+
+S.push({ id: 'b4', sec: 'B', html: () => `
+  ${rv(0, 'Section B · ETL Process', 'div', 'eyebrow')}${rv(1, 'Extract → Transform → Load', 'h2')}
+  ${rv(2, 'Click a transformation to see what it does.', 'p', 'sub')}
+  <div class="etl rv" style="--i:3">
+    <div class="stage-box" style="--c:#4f9eff"><h3>1 · Extract</h3><p style="font-size:13px;color:var(--mu);line-height:1.7">Seven tables read from ECORIDEDB:<br>${['CUSTOMER', 'VEHICLE', 'VEHICLE_TYPE', 'ROUTE', 'LOCATION', 'PAYMENT_METHOD', 'RIDE'].map(t => `<span class="tag">${t}</span>`).join('')}</p><span class="flow">➜</span></div>
+    <div class="stage-box" style="--c:#f5c542"><h3>2 · Transform (7)</h3>${STEPS.map((s, i) => `<button class="chip" data-i="${i}">${i + 1}. ${s[0]}</button>`).join('')}<span class="flow">➜</span></div>
+    <div class="stage-box" style="--c:#00e5a0"><h3>3 · Load</h3><p style="font-size:13px;color:var(--mu);line-height:1.7">Dimensions first, then FACT_RIDE, with FOREIGN KEYs enforcing integrity: a bad key makes the insert fail.</p></div>
+  </div>
+  <div class="panel rv" id="spanel" style="--i:4;margin-top:14px"></div>`, after: () => {
+    const show = i => { document.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('on', j === i)); $('#spanel').innerHTML = `<b>${i + 1}. ${STEPS[i][0]}</b><br>${STEPS[i][1]}`; };
+    document.querySelectorAll('.chip').forEach((c, i) => c.onclick = () => show(i)); show(0); } });
+
+S.push({ id: 'b5', sec: 'B', html: () => `
+  ${rv(0, 'Section B · Load Evidence', 'div', 'eyebrow')}${rv(1, 'Data successfully loaded', 'h2')}
+  ${rv(2, 'Live row counts from ECORIDE_DW, queried right now.', 'p', 'sub')}
+  <div id="counts" class="rv" style="--i:3">Loading…</div><div class="panel rv" id="integ" style="--i:4;margin-top:14px">Checking key integrity…</div>`, after: async () => {
+    try { const d = await (await fetch('/api/rowcounts')).json(); const max = Math.max(...d.counts.map(c => c.n));
+      $('#counts').innerHTML = d.counts.map((c, i) => `<div class="cnt"><span class="l">${c.t}</span><div class="t"><i data-w="${c.n / max * 100}"></i></div><b data-n="${c.n}">0</b></div>`).join('');
+      setTimeout(() => document.querySelectorAll('.cnt i').forEach(e => e.style.width = e.dataset.w + '%'), 80); countUp();
+      $('#integ').innerHTML = d.nullKeys === 0 ? '✅ <b>Referential integrity check passed:</b> no FACT_RIDE row has a NULL location or payment-method key.' : `⚠️ ${d.nullKeys} fact rows have a NULL key.`;
+    } catch (e) { $('#counts').innerHTML = '<div class="err">Could not reach the data warehouse.</div>'; } } });
+
+OLAP.forEach((o, k) => S.push({ id: 'c' + (k + 1), sec: 'C', html: () => `
+  ${rv(0, `Section C · OLAP Operation ${k + 1} of 5`, 'div', 'eyebrow')}
+  ${rv(1, `<span class="badge">${o.op.toUpperCase()}</span><h2>${esc(o.q)}</h2>`)}
+  <div class="two">
+    ${rv(2, `<pre>${esc(o.sql).replace(/\b(SELECT|FROM|JOIN|ON|WHERE|GROUP BY|ORDER BY|AND|IN|PIVOT|FOR|AS|ROLLUP|SUM|ISNULL)\b/g, '<span class="kw">$1</span>')}</pre>`)}
+    ${rv(3, `<button class="run" id="runbtn">▶ Run on data warehouse</button><div class="res" id="res" style="display:none"></div><div class="why" id="why" style="display:none"><b>${o.op}:</b> ${o.why}</div>`)}
+  </div>`, after: () => { $('#runbtn').onclick = async () => {
+    const box = $('#res'); box.style.display = 'block'; box.innerHTML = '<div class="err" style="color:var(--mu)">Running…</div>';
+    try { const d = await (await fetch('/api/olap/' + k)).json(); if (d.error) throw new Error(d.error);
+      const cols = Object.keys(d.rows[0] || {});
+      box.innerHTML = `<table><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>${d.rows.map((r, i) => `<tr>${cols.map(c => `<td style="--i:${i}">${r[c] === null ? '<i style="color:var(--y)">NULL</i>' : r[c]}</td>`).join('')}</tr>`).join('')}</table>`;
+      $('#why').style.display = 'block'; $('#why').style.animation = 'rise .6s both';
+    } catch (e) { box.innerHTML = `<div class="err">${esc(e.message)}</div>`; } } } }));
+
+S.push({ id: 'd1', sec: 'D', html: () => `
+  ${rv(0, 'Section D · Business Intelligence', 'div', 'eyebrow')}${rv(1, 'Now, the <span class="grad">live BI Dashboard</span>', 'h1')}
+  ${rv(2, 'Visualisations, KPIs and filters built directly on the warehouse you just saw, with insights that drive management decisions.', 'p', 'sub')}
+  ${rv(3, '<a class="cta" href="/insights">Open the dashboard →</a> <a class="cta sec" href="#a1">↺ Back to start</a>')}` });
+
+/* ───────── ENGINE ───────── */
+let cur = 0;
+const SECS = [['A', 'a1'], ['B', 'b1'], ['C', 'c1'], ['D', 'd1']];
+const NAMES = { A: 'A · Business', B: 'B · Warehouse', C: 'C · OLAP', D: 'D · Dashboard' };
+function countUp() {
+  document.querySelectorAll('[data-n]').forEach(el => { const to = +el.dataset.n, t0 = performance.now();
+    (function f(t) { const p = Math.min(1, (t - t0) / 1100); el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))).toLocaleString(); if (p < 1) requestAnimationFrame(f); })(t0); });
+}
+function render() {
+  const s = S[cur], st = $('#stage'); st.scrollTop = 0;
+  st.innerHTML = `<section class="slide">${s.html()}</section>`;
+  if (s.after) s.after();
+  $('#tabs').innerHTML = SECS.map(x => `<button class="tab ${x[0] === s.sec ? 'on' : ''}" data-id="${x[1]}">${NAMES[x[0]]}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => go(b.dataset.id));
+  $('#count').textContent = `${cur + 1} / ${S.length}`; $('#prog').style.width = (cur + 1) / S.length * 100 + '%';
+  history.replaceState(null, '', '#' + s.id);
+}
+function go(id) { const i = S.findIndex(s => s.id === id); if (i >= 0) { cur = i; render(); } }
+const step = d => { cur = Math.max(0, Math.min(S.length - 1, cur + d)); render(); };
+$('#prev').onclick = () => step(-1); $('#next').onclick = () => step(1);
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') step(1);
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') step(-1);
+  else if ('1234'.includes(e.key) && e.key) go(SECS[+e.key - 1][1]);
+  else if (e.key.toLowerCase() === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+window.addEventListener('hashchange', () => go(location.hash.slice(1)));
+go(location.hash.slice(1) || 'a1'); if (!document.querySelector('.slide')) render();
+</script></body></html>
