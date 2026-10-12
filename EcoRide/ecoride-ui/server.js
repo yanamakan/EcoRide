@@ -131,6 +131,11 @@ app.get('/reports', async (req, res) => {
 });
 
 // ─── BI DASHBOARD (from ECORIDE_DW data warehouse) ───────────────────────────
+// Fixed calendar so charts and the month filter always list January-December,
+// even for months that have no completed rides (those show as R0).
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
 app.get('/insights', async (req, res) => {
     try {
         const pool = await dwPoolPromise;
@@ -138,10 +143,12 @@ app.get('/insights', async (req, res) => {
         // Build the optional filter clause + parameters shared by every query.
         // Every aggregate below joins all 5 dimensions so any combination of
         // filters is always valid, regardless of which chart is being grouped.
-        function buildFilteredRequest() {
+        // skipMonth: the Revenue-by-Month chart ignores the month filter so it
+        // keeps showing the whole year (the selected month is highlighted instead).
+        function buildFilteredRequest(skipMonth) {
             const r = pool.request();
             const clauses = [];
-            if (req.query.month) {
+            if (req.query.month && !skipMonth) {
                 r.input('month', sql.Int, parseInt(req.query.month, 10));
                 clauses.push('d.MONTH = @month');
             }
@@ -165,10 +172,13 @@ app.get('/insights', async (req, res) => {
             FROM FACT_RIDE f
             JOIN DIM_DATE           d   ON f.DATEKEY          = d.DATEKEY
             JOIN DIM_ROUTE          rt  ON f.ROUTEKEY         = rt.ROUTEKEY
-            JOIN DIM_LOCATION       loc ON f.LOCATIONKEY      = loc.LOCATIONKEY
-            JOIN DIM_VEHICLE        v   ON f.VEHICLEKEY       = v.VEHICLEKEY
-            JOIN DIM_PAYMENT_METHOD pm  ON f.PAYMENTMETHODKEY = pm.PAYMENTMETHODKEY
+            LEFT JOIN DIM_LOCATION       loc ON f.LOCATIONKEY      = loc.LOCATIONKEY
+            JOIN      DIM_VEHICLE        v   ON f.VEHICLEKEY       = v.VEHICLEKEY
+            LEFT JOIN DIM_PAYMENT_METHOD pm  ON f.PAYMENTMETHODKEY = pm.PAYMENTMETHODKEY
             WHERE d.YEAR = 2024`;
+        // LOCATIONKEY / PAYMENTMETHODKEY can be NULL in FACT_RIDE (the ETL uses OUTER APPLY),
+        // so those two joins are LEFT JOINs: otherwise such rides silently vanish from every
+        // total and from the monthly chart. Charts grouped by them label the gap 'Unassigned'.
 
         // ── KPIs ──
         const kpiReq = buildFilteredRequest();
@@ -183,13 +193,17 @@ app.get('/insights', async (req, res) => {
         const totalRides = kpiRow.TotalRides || 0;
         const avgFare = totalRides > 0 ? totalRevenue / totalRides : 0;
 
-        // ── Revenue by month ──
-        const monthReq = buildFilteredRequest();
-        const revenueByMonth = await monthReq.r.query(`
-            SELECT d.MONTH, d.MONTHNAME, SUM(f.FAREAMOUNT) AS Revenue
+        // ── Revenue by month (always all 12 months) ──
+        const monthReq = buildFilteredRequest(true);
+        const monthRows = await monthReq.r.query(`
+            SELECT d.MONTH, SUM(f.FAREAMOUNT) AS Revenue, SUM(f.RIDECOUNT) AS Rides
             ${BASE_FROM}${monthReq.extra}
-            GROUP BY d.MONTH, d.MONTHNAME
-            ORDER BY d.MONTH`);
+            GROUP BY d.MONTH`);
+        const monthData = new Map(monthRows.recordset.map(r => [r.MONTH, r]));
+        const revenueByMonth = MONTH_NAMES.map((name, i) => {
+            const row = monthData.get(i + 1);
+            return { MONTH: i + 1, MONTHNAME: name, Revenue: row ? row.Revenue || 0 : 0, Rides: row ? row.Rides || 0 : 0 };
+        });
 
         // ── Top 10 routes by revenue ──
         const routeReq = buildFilteredRequest();
@@ -211,17 +225,17 @@ app.get('/insights', async (req, res) => {
         // ── Top 10 locations by revenue ──
         const locationReq = buildFilteredRequest();
         const topLocations = await locationReq.r.query(`
-            SELECT TOP 10 loc.NAME, SUM(f.FAREAMOUNT) AS Revenue, SUM(f.RIDECOUNT) AS Rides
+            SELECT TOP 10 ISNULL(loc.NAME, 'Unassigned') AS NAME, SUM(f.FAREAMOUNT) AS Revenue, SUM(f.RIDECOUNT) AS Rides
             ${BASE_FROM}${locationReq.extra}
-            GROUP BY loc.NAME
+            GROUP BY ISNULL(loc.NAME, 'Unassigned')
             ORDER BY Revenue DESC`);
 
         // ── Revenue by payment method ──
         const paymentReq = buildFilteredRequest();
         const revenueByPayment = await paymentReq.r.query(`
-            SELECT pm.METHODTYPE, SUM(f.FAREAMOUNT) AS Revenue
+            SELECT ISNULL(pm.METHODTYPE, 'Unassigned') AS METHODTYPE, SUM(f.FAREAMOUNT) AS Revenue
             ${BASE_FROM}${paymentReq.extra}
-            GROUP BY pm.METHODTYPE
+            GROUP BY ISNULL(pm.METHODTYPE, 'Unassigned')
             ORDER BY Revenue DESC`);
 
         // ── All-location stats (for the map + the what-if simulator) ──
@@ -280,8 +294,7 @@ app.get('/insights', async (req, res) => {
             .filter(Boolean);
 
         // ── Filter dropdown options (unfiltered, so lists never shrink) ──
-        const months = await pool.request().query(
-            `SELECT DISTINCT MONTH, MONTHNAME FROM DIM_DATE WHERE YEAR = 2024 ORDER BY MONTH`);
+        const months = MONTH_NAMES.map((name, i) => ({ MONTH: i + 1, MONTHNAME: name }));
         const locations = await pool.request().query(
             `SELECT DISTINCT loc.NAME FROM DIM_LOCATION loc
              JOIN FACT_RIDE f ON f.LOCATIONKEY = loc.LOCATIONKEY ORDER BY loc.NAME`);
@@ -294,14 +307,14 @@ app.get('/insights', async (req, res) => {
 
         res.render('insights', {
             kpi: { totalRevenue, totalRides, avgFare },
-            revenueByMonth: revenueByMonth.recordset,
+            revenueByMonth: revenueByMonth,
             topRoutes: topRoutes.recordset,
             topVehicleTypes: topVehicleTypes.recordset,
             topLocations: topLocations.recordset,
             revenueByPayment: revenueByPayment.recordset,
             locationStats: locationStats,
             filterOptions: {
-                months: months.recordset,
+                months: months,
                 locations: locations.recordset,
                 vehicleTypes: vehicleTypes.recordset,
                 paymentMethods: paymentMethods.recordset

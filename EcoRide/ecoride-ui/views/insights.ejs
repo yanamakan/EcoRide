@@ -55,21 +55,22 @@
 </div>
 
 <div class="cards-row">
-    <!-- Revenue by Month -->
+    <!-- Revenue by Month: always all 12 months; the selected month (if any) is highlighted -->
     <div class="section-card">
         <h3 class="section-title">Revenue by Month</h3>
-        <% if (revenueByMonth.length === 0) { %>
-            <p class="empty-msg">No data for the selected filters.</p>
+        <% var maxMonthRev = Math.max.apply(null, revenueByMonth.map(function(r){ return r.Revenue || 0; })); %>
+        <% if (maxMonthRev <= 0) { %>
+            <p class="empty-msg">No completed rides in any month for the selected filters.</p>
         <% } else { %>
-            <% var maxMonthRev = Math.max.apply(null, revenueByMonth.map(function(r){ return r.Revenue || 0; })); %>
-            <div class="bar-chart">
+            <div class="bar-chart month-chart">
             <% revenueByMonth.forEach(function(row) { %>
-                <div class="bar-row">
+                <% var dimmed = selected.month && String(selected.month) !== String(row.MONTH); %>
+                <div class="bar-row<%= dimmed ? ' bar-dim' : '' %><%= row.Revenue > 0 ? '' : ' bar-empty' %>">
                     <span class="bar-label"><%= row.MONTHNAME %></span>
                     <div class="bar-track">
-                        <div class="bar-fill" style="width:<%= maxMonthRev > 0 ? Math.round((row.Revenue/maxMonthRev)*100) : 0 %>%"></div>
+                        <div class="bar-fill" style="width:<%= Math.round((row.Revenue/maxMonthRev)*100) %>%"></div>
                     </div>
-                    <span class="bar-val">R<%= Math.round(row.Revenue||0).toLocaleString() %></span>
+                    <span class="bar-val">R<%= Math.round(row.Revenue||0).toLocaleString() %> &middot; <%= row.Rides %> rides</span>
                 </div>
             <% }); %>
             </div>
@@ -231,7 +232,7 @@
     </div>
     <div id="chatMessages" class="chat-messages">
         <div class="chat-msg chat-msg-bot">
-            Ask me anything about EcoRide: revenue, rides, hubs, vehicles, routes, customers or payments. I can also explain how the dashboard and data warehouse work. Try "Which hub earned the most in March?" and then follow up with "and in February?"
+            Ask me anything about EcoRide. I can answer from the data warehouse (completed-ride revenue, routes, hubs, vehicle types, payment methods) and from the live operational database (customers, current rides and vehicles, invoices, payments, subscriptions, support tickets, staff and promotions). Try "Which hub earned the most in March?", "Which subscription type has the most customers?" or "How many support tickets are open per department?"
         </div>
     </div>
     <form id="chatForm" class="chat-input-row">
