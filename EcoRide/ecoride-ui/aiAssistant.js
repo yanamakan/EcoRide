@@ -354,16 +354,9 @@ async function askEcoRide(question, history, deps = {}) {
                 });
 
                 let link = null;
-                if (plan.mode === 'warehouse_sql') {
-                    try {
-                        const pool = deps.getWarehousePool ? await deps.getWarehousePool() : await getWarehousePool();
-                        link = await buildDashboardLink(plan.filters, pool);
-                    } catch (e) {
-                        link = '/insights';
-                    }
-                }
-                console.log(`[AI] ${plan.mode} answer via ${plan.model} (${rows.length} rows, ${Date.now() - started} ms)`);
-                return { answer: String(synth.content || '').replace(/\*\*/g, '').trim(), link, sql: v.sql };
+                try { link = await buildDashboardLink(plan.filters, await getPool()); } catch (e) { link = '/insights'; }
+                console.log(`[AI] sql answer via ${plan.model} (${rows.length} rows, ${Date.now() - started} ms)`);
+                return { answer: synth.content.replace(/\*\*/g, '').trim(), link, sql: v.sql, rows: rows.slice(0, 15) };
             }
 
             if (attempt >= 1) {
@@ -415,15 +408,8 @@ function makeRateLimiter(max, windowMs) {
 }
 
 module.exports = {
-    askEcoRide,
-    makeRateLimiter,
-    validateGeneratedSql,
-    sanitizeHistory,
-    normalizePlan,
-    buildDashboardLink,
-    PLANNER_SYSTEM,
-    PLANNER_SCHEMA,
-    SYNTH_SYSTEM,
-    WAREHOUSE_TABLES,
-    OPERATIONAL_TABLES
+    askEcoRide, makeRateLimiter,
+    // exported for tests
+    validateGeneratedSql, sanitizeHistory, normalizePlan, buildDashboardLink,
+    PLANNER_SYSTEM, PLANNER_SCHEMA, SYNTH_SYSTEM, ALLOWED_TABLES
 };

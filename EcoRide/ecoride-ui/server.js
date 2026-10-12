@@ -11,6 +11,10 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+app.get('/assistant', (req, res) => {
+    res.render('assistant', { page: 'assistant' });
+});
+
 // ─── HOME ───────────────────────────────────────────────────────────────────
 app.get('/', async (req, res) => {
     try {
