@@ -67,6 +67,13 @@
         var question = input.value.trim();
         if (!question) return;
         addMessage(question, 'user');
+
+        var question = input.value.trim();
+        if (!question) return;
+        window.location.href = '/assistant?q=' + encodeURIComponent(question);
+        return;
+        addMessage(question, 'user');
+
         input.value = '';
         input.disabled = true;
 

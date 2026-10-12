@@ -298,7 +298,7 @@ async function askEcoRide(question, history, deps = {}) {
                 let link = null;
                 try { link = await buildDashboardLink(plan.filters, await getPool()); } catch (e) { link = '/insights'; }
                 console.log(`[AI] sql answer via ${plan.model} (${rows.length} rows, ${Date.now() - started} ms)`);
-                return { answer: synth.content.replace(/\*\*/g, '').trim(), link, sql: v.sql };
+                return { answer: synth.content.replace(/\*\*/g, '').trim(), link, sql: v.sql, rows: rows.slice(0, 15) };
             }
 
             if (attempt >= 1) {

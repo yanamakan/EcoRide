@@ -1,0 +1,19 @@
+<%- include('_header', { page: 'assistant' }) %>
+
+<div class="assistant-page">
+    <div class="assistant-top">
+        <a href="/insights" class="assistant-back">← Back to Dashboard</a>
+        <h1 class="assistant-title">EcoRide Assistant</h1>
+        <button type="button" id="aReset" class="assistant-new">New chat</button>
+    </div>
+
+    <div id="aMessages" class="assistant-messages"></div>
+
+    <form id="aForm" class="assistant-form" autocomplete="off">
+        <input id="aInput" type="text" placeholder="Ask a question about EcoRide…" />
+        <button type="submit">Send</button>
+    </form>
+</div>
+
+<script src="/js/assistant.js"></script>
+<%- include('_footer') %>
